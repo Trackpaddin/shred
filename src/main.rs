@@ -4,6 +4,18 @@ use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
 use clap::Parser;
 
+#[derive(Parser)]
+#[command(name = "shred")]
+#[command(about = "Securely overwrite files to hide their contents")]
+struct Args {
+    /// File to shred
+    file: String,
+
+    /// Number of overwrite passes
+    #[arg(short = 'n', long = "iterations", default_value = "3")]
+    passes: u32,
+}
+
 fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
     const BUFFER_SIZE: usize = 4096;
     let mut buffer = [0u8; BUFFER_SIZE];
