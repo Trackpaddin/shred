@@ -1,0 +1,54 @@
+# shred
+
+A Rust implementation of the Unix `shred(1)` utility for securely overwriting files.
+
+## Overview
+
+`shred` overwrites files multiple times with random data, making it difficult to recover the original contents. The final pass uses zeros to hide that shredding occurred.
+
+## Usage
+```
+shred [OPTIONS] <FILE>
+```
+
+### Arguments
+
+- `<FILE>` — File to shred
+
+### Options
+
+| Flag | Long | Description |
+|------|------|-------------|
+| `-n` | `--iterations <N>` | Number of overwrite passes (default: 3) |
+| `-v` | `--verbose` | Show progress information |
+| `-u` | `--remove` | Remove the file after shredding |
+| `-h` | `--help` | Print help |
+
+## Examples
+```bash
+# Basic shred (3 passes, silent)
+shred secret.txt
+
+# Verbose with 5 passes
+shred -v -n 5 secret.txt
+
+# Shred and delete
+shred -vu secret.txt
+```
+
+## Building
+```bash
+cargo build --release
+```
+
+The binary will be at `target/release/shred`.
+
+## Limitations
+
+- May not be effective on journaling filesystems, SSDs, or RAID arrays
+- Does not shred filenames or directory entries
+- Single file only (no directory recursion)
+
+## License
+
+MIT
