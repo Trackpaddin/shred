@@ -2,6 +2,7 @@ use std::env;
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
+use clap::Parser;
 
 fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
     const BUFFER_SIZE: usize = 4096;
@@ -46,14 +47,14 @@ fn main() {
 
     let file_size = file.metadata().expect("Failed to get metadata").len();
 
-    println!("Shredding '{}' ({} bytes)", filename, file_size);
+    println!("Shredding '{}' ({} bytes)...", filename, file_size);
 
     let passes = 3;
 
     for i in 1..=passes {
         let use_random = i < passes;
         let pattern = if use_random { "random" } else { "zeroes" };
-        println!("Pass {}/{} ({})", i, passes, pattern);
+        println!("Pass {}/{} ({})...", i, passes, pattern);
         overwrite_file(&mut file, file_size, use_random);
     }
 
