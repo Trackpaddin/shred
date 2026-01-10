@@ -1,4 +1,3 @@
-use std::env;
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
@@ -14,6 +13,9 @@ struct Args {
     /// Number of overwrite passes
     #[arg(short = 'n', long = "iterations", default_value = "3")]
     passes: u32,
+    /// Show progress information
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
@@ -42,14 +44,9 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
 }    
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    if args.len() < 2 {
-        eprintln!("Usage: {} <file>", args[0]);
-        std::process::exit(1);
-    }
-
-    let filename = &args[1];
+    let filename = &args.file;
 
     let mut file = OpenOptions::new()
         .write(true)
@@ -61,14 +58,18 @@ fn main() {
 
     println!("Shredding '{}' ({} bytes)...", filename, file_size);
 
-    let passes = 3;
+    let passes = args.passes;
 
     for i in 1..=passes {
         let use_random = i < passes;
-        let pattern = if use_random { "random" } else { "zeroes" };
-        println!("Pass {}/{} ({})...", i, passes, pattern);
+        if args.verbose {
+            let pattern = if use_random { "random" } else { "zeroes" };
+            println!("Pass {}/{} ({})...", i, passes, pattern);            
+        }
         overwrite_file(&mut file, file_size, use_random);
     }
 
-    println!("File overwritten {} times.", passes);
+    if args.verbose {
+        println!("Shredding '{}' ({} bytes)...", filename, file_size);
+    }
 }
