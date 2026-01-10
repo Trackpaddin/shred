@@ -1,11 +1,15 @@
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{Seek, SeekFrom, Write};
+use rand::RngCore;
 
-
-fn overwrite_file(file: &mut std::fs::File, file_size: u64) {
+fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
     const BUFFER_SIZE: usize = 4096;
-    let buffer = [0u8; BUFFER_SIZE];
+    let mut buffer = [0u8; BUFFER_SIZE];
+
+    if use_random {
+        rand::thread_rng().fill_bytes(&mut buffer);
+    }
 
     file.seek(SeekFrom::Start(0)).expect("Failed to seek");
 
@@ -47,8 +51,10 @@ fn main() {
     let passes = 3;
 
     for i in 1..=passes {
-        println!("Pass {}/{}", i, passes);
-        overwrite_file(&mut file, file_size);
+        let use_random = i < passes;
+        let pattern = if use_random { "random" } else { "zeroes" };
+        println!("Pass {}/{} ({})", i, passes, pattern);
+        overwrite_file(&mut file, file_size, use_random);
     }
 
     println!("File overwritten {} times.", passes);
