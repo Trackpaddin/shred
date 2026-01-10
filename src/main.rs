@@ -46,7 +46,7 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
     file.sync_all().expect("Failed to sync to disk");
 }    
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let filename = &args.file;
@@ -54,10 +54,9 @@ fn main() {
     let mut file = OpenOptions::new()
         .write(true)
         .read(true)
-        .open(filename)
-        .expect("Failed to open file");
+        .open(filename)?;
 
-    let file_size = file.metadata().expect("Failed to get metadata").len();
+    let file_size = file.metadata()?.len();
 
     println!("Shredding '{}' ({} bytes)...", filename, file_size);
 
@@ -76,9 +75,10 @@ fn main() {
         println!("Shredding '{}' ({} bytes)...", filename, file_size);
     }
     if args.remove {
-        remove_file(filename).expect("Failed to remove file");
+        remove_file(filename)?;
         if args.verbose {
         println!("File '{}' removed.", filename);
         }
     }
+    Ok(())
 }
