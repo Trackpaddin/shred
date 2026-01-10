@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs::{remove_file, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
 use clap::Parser;
@@ -16,6 +16,9 @@ struct Args {
     /// Show progress information
     #[arg(short, long)]
     verbose: bool,
+    /// Remove the file after shredding
+    #[arg(short = 'u', long)]
+    remove: bool,
 }
 
 fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
@@ -71,5 +74,11 @@ fn main() {
 
     if args.verbose {
         println!("Shredding '{}' ({} bytes)...", filename, file_size);
+    }
+    if args.remove {
+        remove_file(filename).expect("Failed to remove file");
+        if args.verbose {
+        println!("File '{}' removed.", filename);
+        }
     }
 }
