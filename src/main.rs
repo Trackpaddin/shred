@@ -21,7 +21,7 @@ struct Args {
     remove: bool,
 }
 
-fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
+fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) -> std::io::Result<()> {
     const BUFFER_SIZE: usize = 4096;
     let mut buffer = [0u8; BUFFER_SIZE];
 
@@ -29,21 +29,22 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) {
         rand::thread_rng().fill_bytes(&mut buffer);
     }
 
-    file.seek(SeekFrom::Start(0)).expect("Failed to seek");
+    file.seek(SeekFrom::Start(0))?;
 
     let mut bytes_written: u64 = 0;
 
     while bytes_written + BUFFER_SIZE as u64 <= file_size {
-        file.write_all(&buffer).expect("Failed to write");
+        file.write_all(&buffer)?;
         bytes_written += BUFFER_SIZE as u64;
     }
 
     let remaining = (file_size - bytes_written) as usize;
     if remaining > 0 {
-        file.write_all(&buffer[..remaining]).expect("Failed to write");
+        file.write_all(&buffer[..remaining])?;
     }
 
-    file.sync_all().expect("Failed to sync to disk");
+    file.sync_all()?;
+    Ok(())
 }    
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
