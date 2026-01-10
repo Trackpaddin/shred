@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let pattern = if use_random { "random" } else { "zeroes" };
             println!("Pass {}/{} ({})...", i, passes, pattern);            
         }
-        overwrite_file(&mut file, file_size, use_random);
+        overwrite_file(&mut file, file_size, use_random)?;
     }
 
     if args.verbose {
