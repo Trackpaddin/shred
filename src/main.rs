@@ -38,4 +38,8 @@ fn main() {
     if remaining > 0 {
         file.write_all(&buffer[..remaining]).expect("Failed to write");
     }
+
+    file.sync_all().expect("Failed to sync to disk");
+    
+    println!("File overwritten.");
 }
