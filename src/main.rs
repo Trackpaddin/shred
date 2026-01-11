@@ -25,6 +25,9 @@ struct Args {
     ///  Skip confirmation prompt
     #[arg(short, long)]
     force: bool,
+    /// Add a final pass with zeroes to hide shredding
+    #[arg(short,long)]
+    zero: bool,
 }
 
 fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, quiet: bool) -> std::io::Result<()> {
@@ -128,12 +131,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let passes = args.passes;
 
         for i in 1..=passes {
-            let use_random = i < passes;
             if !args.quiet {
-                let pattern = if use_random { "random" } else { "zeroes" };
-                println!("Pass {}/{} ({})...", i, passes, pattern);            
+                println!("{}: Pass {}/{} (random)...", filename, i, passes);
             }
-            overwrite_file(&mut file, file_size, use_random, !args.quiet)?;
+            overwrite_file(&mut file, file_size, true, !args.quiet)?;
+        }
+
+        if args.zero {
+            if !args.quiet {
+                println!("{}: Final pass (zeros)...", filename);
+            }
+            overwrite_file(&mut file, file_size, false, !args.quiet)?;
         }
 
         if !args.quiet {
