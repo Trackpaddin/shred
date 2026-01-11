@@ -1,4 +1,5 @@
-use std::fs::{remove_file, OpenOptions};
+use std::path::Path;
+use std::fs::{self, OpenOptions, remove_file};
 use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
 use clap::Parser;
@@ -64,12 +65,36 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, ve
 
     file.sync_all()?;
     Ok(())
-}    
+}  
+
+fn validate_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let path = Path::new(path);
+
+    if !path.exists() {
+        return Err(format!("File '{}' does not exist.", path.display()).into());
+    }
+
+    if !path.is_file() {
+        return Err(format!("File '{}' is not a file.", path.display()).into());
+    }    
+
+    let metadata = fs::metadata(path)?;
+    if metadata.permissions().readonly() {
+        return Err(format!("File '{}' is read-only.", path.display()).into());
+    }
+
+    if metadata.len() == 0 {
+        eprintln!("File '{}' is empty.", path.display());
+    }
+
+    Ok(())
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-
     let filename = &args.file;
+
+    validate_file(filename)?;
 
     let mut file = OpenOptions::new()
         .write(true)
