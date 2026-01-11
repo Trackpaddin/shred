@@ -5,6 +5,14 @@ use rand::RngCore;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
 
+
+#[derive(Clone, clap::ValueEnum)]
+enum RemoveMethod {
+    Unlink,
+    Wipe,
+    Wipesync,
+}
+
 #[derive(Parser)]
 #[command(name = "shred")]
 #[command(about = "Securely overwrite files to hide their contents")]
@@ -19,9 +27,9 @@ struct Args {
     /// Suppress progress information
     #[arg(short, long)]
     quiet: bool,
-    /// Remove the file after shredding
-    #[arg(short = 'u', long)]
-    remove: bool,
+    /// Remove the file after shredding [HOW: unlink, wipe, wipesync]
+    #[arg(short = 'u', long, value_name = "HOW",num_args = 0..=1, default_missing_value = "unlink")]
+    remove: Option<RemoveMethod>,
     ///  Skip confirmation prompt
     #[arg(short, long)]
     force: bool,
@@ -113,6 +121,33 @@ fn validate_file(path: &str, force: bool) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
+fn wipe_filename(path: &str, sync: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let path = Path::new(path);
+    let parent = path.parent().unwrap_or(Path::new("."));
+    
+    // Generate a random filename of the same length
+    let original_name = path.file_name()
+        .ok_or("Invalid filename")?
+        .to_string_lossy();
+    
+    let name_len = original_name.len();
+    let random_name: String = (0..name_len)
+        .map(|_| (b'a' + (rand::random::<u8>() % 26)) as char)
+        .collect();
+    
+    let new_path = parent.join(&random_name);
+    
+    fs::rename(path, &new_path)?;
+
+    if sync {
+        let dir = fs::File::open(parent)?;
+        dir.sync_all()?;
+    }
+    
+    remove_file(&new_path)?;
+    
+    Ok(())
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     
@@ -148,8 +183,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Shredded '{}' ({} bytes)...", filename, file_size);
         }
 
-        if args.remove {
-            remove_file(filename)?;
+        if let Some(method) = &args.remove {
+            match method {
+                RemoveMethod::Unlink => {
+                    fs::remove_file(filename)?;
+                }
+                RemoveMethod::Wipe => {
+                    wipe_filename(filename, false)?;
+                }
+                RemoveMethod::Wipesync => {
+                    wipe_filename(filename, true)?;
+                }
+            }
             if !args.quiet {
             println!("File '{}' removed.", filename);
             }
