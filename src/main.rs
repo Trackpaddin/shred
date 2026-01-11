@@ -9,13 +9,14 @@ use indicatif::{ProgressBar, ProgressStyle};
 #[command(name = "shred")]
 #[command(about = "Securely overwrite files to hide their contents")]
 struct Args {
-    /// File to shred
-    file: String,
+    /// Files to shred
+    #[arg(required = true)]
+    files: Vec<String>,
 
     /// Number of overwrite passes
     #[arg(short = 'n', long = "iterations", default_value = "3")]
     passes: u32,
-    /// Show progress information
+    /// Suppress progress information
     #[arg(short, long)]
     quiet: bool,
     /// Remove the file after shredding
@@ -101,7 +102,7 @@ fn validate_file(path: &str, force: bool) -> Result<(), Box<dyn std::error::Erro
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;
 
-        if input.trim().eq_ignore_ascii_case("N") {
+        if !input.trim().eq_ignore_ascii_case("y") {
             return Err("Aborted by user.".into());
         }
     }
@@ -111,38 +112,41 @@ fn validate_file(path: &str, force: bool) -> Result<(), Box<dyn std::error::Erro
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let filename = &args.file;
+    
+    for filename in &args.files {
+        validate_file(filename, args.force)?;
+    }
 
-    validate_file(filename, args.force)?;
+    for filename in &args.files {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(filename)?;
 
-    let mut file = OpenOptions::new()
-        .write(true)
-        .read(true)
-        .open(filename)?;
+        let file_size = file.metadata()?.len();
 
-    let file_size = file.metadata()?.len();
+        let passes = args.passes;
 
-    println!("Shredding '{}' ({} bytes)...", filename, file_size);
-
-    let passes = args.passes;
-
-    for i in 1..=passes {
-        let use_random = i < passes;
-        if !args.quiet {
-            let pattern = if use_random { "random" } else { "zeroes" };
-            println!("Pass {}/{} ({})...", i, passes, pattern);            
+        for i in 1..=passes {
+            let use_random = i < passes;
+            if !args.quiet {
+                let pattern = if use_random { "random" } else { "zeroes" };
+                println!("Pass {}/{} ({})...", i, passes, pattern);            
+            }
+            overwrite_file(&mut file, file_size, use_random, !args.quiet)?;
         }
-        overwrite_file(&mut file, file_size, use_random, !args.quiet)?;
-    }
 
-    if !args.quiet {
-        println!("Shredding '{}' ({} bytes)...", filename, file_size);
-    }
-    if args.remove {
-        remove_file(filename)?;
         if !args.quiet {
-        println!("File '{}' removed.", filename);
+            println!("Shredded '{}' ({} bytes)...", filename, file_size);
+        }
+
+        if args.remove {
+            remove_file(filename)?;
+            if !args.quiet {
+            println!("File '{}' removed.", filename);
+            }
         }
     }
+
     Ok(())
 }
