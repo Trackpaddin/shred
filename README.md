@@ -8,32 +8,33 @@ A Rust implementation of the Unix `shred(1)` utility for securely overwriting fi
 
 ## Usage
 ```
-shred [OPTIONS] <FILE>
+shred [OPTIONS] <FILE(S)>
 ```
 
 ### Arguments
 
-- `<FILE>` — File to shred
+- `<FILE(S)>` — File(s) to shred
 
 ### Options
 
 | Flag | Long | Description |
 |------|------|-------------|
 | `-n` | `--iterations <N>` | Number of overwrite passes (default: 3) |
-| `-v` | `--verbose` | Show progress information |
+| `-q` | `--quiet` | Suppress progress information |
 | `-u` | `--remove` | Remove the file after shredding |
+| `-f` | `--force` | Skip confirmation prompt |
 | `-h` | `--help` | Print help |
 
 ## Examples
 ```bash
-# Basic shred (3 passes, silent)
+# Basic shred (3 passes)
 shred secret.txt
 
-# Verbose with 5 passes
-shred -v -n 5 secret.txt
+# Suppress progress output with 5 passes
+shred -q -n 5 secret.txt
 
 # Shred and delete
-shred -vu secret.txt
+shred -qu secret.txt
 ```
 
 ## Building
