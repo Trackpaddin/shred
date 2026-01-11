@@ -2,6 +2,7 @@ use std::fs::{remove_file, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use rand::RngCore;
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
 #[command(name = "shred")]
@@ -21,13 +22,23 @@ struct Args {
     remove: bool,
 }
 
-fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) -> std::io::Result<()> {
+fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, verbose: bool) -> std::io::Result<()> {
     const BUFFER_SIZE: usize = 4096;
     let mut buffer = [0u8; BUFFER_SIZE];
 
     if use_random {
         rand::thread_rng().fill_bytes(&mut buffer);
     }
+
+    let progress = if verbose {
+        let pb = ProgressBar::new(file_size);
+        pb.set_style(ProgressStyle::default_bar()
+            .template("{bar:40} {percent}% ({bytes}/{total_bytes})")
+            .expect("Invalid template"));
+        Some(pb)
+    } else {
+        None
+    };
 
     file.seek(SeekFrom::Start(0))?;
 
@@ -36,11 +47,19 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool) ->
     while bytes_written + BUFFER_SIZE as u64 <= file_size {
         file.write_all(&buffer)?;
         bytes_written += BUFFER_SIZE as u64;
+        if let Some(ref pb) = progress {
+            pb.set_position(bytes_written);
+        }    
     }
 
     let remaining = (file_size - bytes_written) as usize;
     if remaining > 0 {
         file.write_all(&buffer[..remaining])?;
+    }
+
+    if let Some(ref pb) = progress {
+        // finish() leaves bar visible
+        pb.finish_and_clear();
     }
 
     file.sync_all()?;
@@ -69,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let pattern = if use_random { "random" } else { "zeroes" };
             println!("Pass {}/{} ({})...", i, passes, pattern);            
         }
-        overwrite_file(&mut file, file_size, use_random)?;
+        overwrite_file(&mut file, file_size, use_random, args.verbose)?;
     }
 
     if args.verbose {
