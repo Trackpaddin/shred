@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::fs::{self, OpenOptions, remove_file};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{self, Seek, SeekFrom, Write};
 use rand::RngCore;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -17,13 +17,16 @@ struct Args {
     passes: u32,
     /// Show progress information
     #[arg(short, long)]
-    verbose: bool,
+    quiet: bool,
     /// Remove the file after shredding
     #[arg(short = 'u', long)]
     remove: bool,
+    ///  Skip confirmation prompt
+    #[arg(short, long)]
+    force: bool,
 }
 
-fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, verbose: bool) -> std::io::Result<()> {
+fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, quiet: bool) -> std::io::Result<()> {
     const BUFFER_SIZE: usize = 4096;
     let mut buffer = [0u8; BUFFER_SIZE];
 
@@ -31,7 +34,7 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, ve
         rand::thread_rng().fill_bytes(&mut buffer);
     }
 
-    let progress = if verbose {
+    let progress = if !quiet {
         let pb = ProgressBar::new(file_size);
         pb.set_style(ProgressStyle::default_bar()
             .template("{bar:40} {percent}% ({bytes}/{total_bytes})")
@@ -67,11 +70,15 @@ fn overwrite_file(file: &mut std::fs::File, file_size: u64, use_random: bool, ve
     Ok(())
 }  
 
-fn validate_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn validate_file(path: &str, force: bool) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new(path);
 
     if !path.exists() {
         return Err(format!("File '{}' does not exist.", path.display()).into());
+    }
+
+    if path.is_symlink() {
+        return Err(format!("File '{}' is a symbolic link; refusing to shred.", path.display()).into());
     }
 
     if !path.is_file() {
@@ -87,6 +94,18 @@ fn validate_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("File '{}' is empty.", path.display());
     }
 
+    if !force {
+        eprintln!("Are you sure you want to shred '{}'? (y/N)", path.display());
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+
+        if input.trim().eq_ignore_ascii_case("N") {
+            return Err("Aborted by user.".into());
+        }
+    }
+
     Ok(())
 }
 
@@ -94,7 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let filename = &args.file;
 
-    validate_file(filename)?;
+    validate_file(filename, args.force)?;
 
     let mut file = OpenOptions::new()
         .write(true)
@@ -109,19 +128,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for i in 1..=passes {
         let use_random = i < passes;
-        if args.verbose {
+        if !args.quiet {
             let pattern = if use_random { "random" } else { "zeroes" };
             println!("Pass {}/{} ({})...", i, passes, pattern);            
         }
-        overwrite_file(&mut file, file_size, use_random, args.verbose)?;
+        overwrite_file(&mut file, file_size, use_random, !args.quiet)?;
     }
 
-    if args.verbose {
+    if !args.quiet {
         println!("Shredding '{}' ({} bytes)...", filename, file_size);
     }
     if args.remove {
         remove_file(filename)?;
-        if args.verbose {
+        if !args.quiet {
         println!("File '{}' removed.", filename);
         }
     }
