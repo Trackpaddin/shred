@@ -21,7 +21,7 @@ shred [OPTIONS] <FILE(S)>
 |------|------|-------------|
 | `-n` | `--iterations <N>` | Number of overwrite passes (default: 3) |
 | `-q` | `--quiet` | Suppress progress information |
-| `-u` | `--remove` | Remove the file after shredding |
+| `-u` | `--remove[=HOW]` | Remove the file after shredding [HOW: unlink, wipe, wipesync] (default: unlink) |
 | `-f` | `--force` | Skip confirmation prompt |
 | `-h` | `--help` | Print help |
 

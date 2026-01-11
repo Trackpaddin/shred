@@ -28,7 +28,7 @@ struct Args {
     #[arg(short, long)]
     quiet: bool,
     /// Remove the file after shredding [HOW: unlink, wipe, wipesync]
-    #[arg(short = 'u', long, value_name = "HOW",num_args = 0..=1, default_missing_value = "unlink")]
+    #[arg(short = 'u', long, value_name = "HOW",num_args = 0..=1, default_missing_value = "unlink", require_equals = true)]
     remove: Option<RemoveMethod>,
     ///  Skip confirmation prompt
     #[arg(short, long)]
