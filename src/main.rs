@@ -35,7 +35,7 @@ struct Args {
     #[arg(short, long)]
     zero: bool,
     /// Show what would happen without actually shredding
-    // Underscore equals hyphe
+    // Underscore equals hyphen
     #[arg(long)]
     dry_run: bool,
     /// Specify a size parameter
@@ -67,6 +67,9 @@ fn overwrite_file(
     file.seek(SeekFrom::Start(0))?;
     let mut bytes_written: u64 = 0;
     while bytes_written + BUFFER_SIZE as u64 <= file_size {
+        if use_random {
+            rand::rng().fill_bytes(&mut buffer);
+        }
         file.write_all(&buffer)?;
         bytes_written += BUFFER_SIZE as u64;
         if let Some(ref pb) = progress {
@@ -163,7 +166,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if !args.quiet {
                 println!("{}: Pass {}/{} (random)...", filename, i, passes);
             }
-            overwrite_file(&mut file, shred_size, true, !args.quiet)?;
+            overwrite_file(&mut file, shred_size, true, args.quiet)?;
         }
         if args.zero {
             if !args.quiet {
