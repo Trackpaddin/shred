@@ -5,7 +5,7 @@ use std::fs::{self, OpenOptions, remove_file};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::Path;
 
-#[derive(Clone, clap::ValueEnum)]
+#[derive(Clone, Debug, clap::ValueEnum)]
 enum RemoveMethod {
     Unlink,
     Wipe,
@@ -34,6 +34,13 @@ struct Args {
     /// Add a final pass with zeroes to hide shredding
     #[arg(short, long)]
     zero: bool,
+    /// Show what would happen without actually shredding
+    // Underscore equals hyphe
+    #[arg(long)]
+    dry_run: bool,
+    /// Specify a size parameter
+    #[arg(short, long)]
+    size: Option<u64>,
 }
 fn overwrite_file(
     file: &mut std::fs::File,
@@ -135,20 +142,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         validate_file(filename, args.force)?;
     }
     for filename in &args.files {
+        let file_size = fs::metadata(filename)?.len();
+        let shred_size = args.size.map(|s| s.min(file_size)).unwrap_or(file_size);
+        if args.dry_run {
+            println!(
+                "Would shred '{}' ({} bytes) with {} passes",
+                filename, file_size, args.passes
+            );
+            if args.zero {
+                println!("Would add final zero pass");
+            }
+            if let Some(method) = &args.remove {
+                println!("Would remove '{}' using {:?}", filename, method);
+            }
+            continue;
+        }
         let mut file = OpenOptions::new().write(true).read(true).open(filename)?;
-        let file_size = file.metadata()?.len();
         let passes = args.passes;
         for i in 1..=passes {
             if !args.quiet {
                 println!("{}: Pass {}/{} (random)...", filename, i, passes);
             }
-            overwrite_file(&mut file, file_size, true, !args.quiet)?;
+            overwrite_file(&mut file, shred_size, true, !args.quiet)?;
         }
         if args.zero {
             if !args.quiet {
                 println!("{}: Final pass (zeros)...", filename);
             }
-            overwrite_file(&mut file, file_size, false, !args.quiet)?;
+            overwrite_file(&mut file, shred_size, false, !args.quiet)?;
         }
         if !args.quiet {
             println!("Shredded '{}' ({} bytes)...", filename, file_size);
