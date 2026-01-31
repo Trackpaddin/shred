@@ -22,7 +22,10 @@ shred [OPTIONS] <FILE(S)>
 | `-n` | `--iterations <N>` | Number of overwrite passes (default: 3) |
 | `-q` | `--quiet` | Suppress progress information |
 | `-u` | `--remove[=HOW]` | Remove the file after shredding [HOW: unlink, wipe, wipesync] (default: unlink) |
-| `s` | `--size <N>` | Size of overwrite in bytes (default: 4096) |
+| `s` | `--size <N>` | Size of overwrite in bytes |
+| `-r` | `--recursive` | Recursively shred all files in a directory |
+| `-z` | `--zero` | Add a final pass with zeroes to hide shredding |
+| `-d` | `--dry-run` | Show what would happen without actually shredding |
 | `-f` | `--force` | Skip confirmation prompt |
 | `-h` | `--help` | Print help |
 
@@ -36,6 +39,9 @@ shred -q -n 5 secret.txt
 
 # Shred and delete
 shred -qu secret.txt
+
+# Recursive shred (force, remove, wipe)
+shred -r -f -u=wipe secret_dir
 ```
 
 ## Building
@@ -49,7 +55,6 @@ The binary will be at `target/release/shred`.
 
 - May not be effective on journaling filesystems, SSDs, or RAID arrays
 - Does not shred filenames or directory entries
-- Single file only (no directory recursion)
 
 ## License
 

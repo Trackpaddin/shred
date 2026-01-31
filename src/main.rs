@@ -4,6 +4,7 @@ use rand::RngCore;
 use std::fs::{self, OpenOptions, remove_file};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::Path;
+use walkdir::WalkDir;
 
 #[derive(Clone, Debug, clap::ValueEnum)]
 enum RemoveMethod {
@@ -38,9 +39,12 @@ struct Args {
     // Underscore equals hyphen
     #[arg(long)]
     dry_run: bool,
-    /// Specify a size parameter
+    /// Specify a size parameter (in bytes)
     #[arg(short, long)]
     size: Option<u64>,
+    /// Recursively shred all files in a directory
+    #[arg(short, long)]
+    recursive: bool,
 }
 fn overwrite_file(
     file: &mut std::fs::File,
@@ -139,14 +143,42 @@ fn wipe_filename(path: &str, sync: bool) -> Result<(), Box<dyn std::error::Error
     remove_file(&new_path)?;
     Ok(())
 }
+fn collect_files(path: &str, recursive: bool) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let path = Path::new(path);
+    if path.is_file() {
+        return Ok(vec![path.to_string_lossy().to_string()]);
+    }
+    if !path.is_dir() {
+        return Err(format!("Path '{}' is not a file or a directory.", path.display()).into());
+    }
+    if !recursive {
+        return Err(format!(
+            "Path '{}' is a directory, but recursive mode is disabled.",
+            path.display()
+        )
+        .into());
+    }
+    let mut files = Vec::new();
+    for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+        if entry.path().is_file() {
+            files.push(entry.path().to_string_lossy().to_string());
+        }
+    }
+    Ok(files)
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    for filename in &args.files {
+    let mut all_files: Vec<String> = Vec::new();
+    for path in &args.files {
+        all_files.extend(collect_files(path, args.recursive)?);
+    }
+    for filename in &all_files {
         validate_file(filename, args.force)?;
     }
-    for filename in &args.files {
+    for filename in &all_files {
         let file_size = fs::metadata(filename)?.len();
         let shred_size = args.size.map(|s| s.min(file_size)).unwrap_or(file_size);
+        println!("DEBUG: file_size={} shred_size={}", file_size, shred_size);
         if args.dry_run {
             println!(
                 "Would shred '{}' ({} bytes) with {} passes",

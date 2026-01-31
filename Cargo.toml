@@ -7,3 +7,4 @@ edition = "2024"
 rand = "0.9"
 clap = { version = "4", features = ["derive"] }
 indicatif = "0.17"
+walkdir = "2"
