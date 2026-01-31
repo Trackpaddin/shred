@@ -8,12 +8,13 @@ A Rust implementation of the Unix `shred(1)` utility for securely overwriting fi
 
 ## Usage
 ```
-shred [OPTIONS] <FILE(S)>
+shred [OPTIONS] <FILE(S)> <DIR>
 ```
 
 ### Arguments
 
 - `<FILE(S)>` — File(s) to shred
+- `<DIR>` — Directory to shred
 
 ### Options
 
